@@ -1,11 +1,44 @@
- function Tagtransform(transforms) {
+function TagtransformRecorder() {
+	let self = new Object();
+	let added = {};
+	let removed = {};
+	let modified = {};
 	
+	self.type = "recorder";
+	
+	function add(key, value) {
+		added[key] = value;
+	}
+	self.add = add;
+	
+	function remove(key, value) {
+		removed[key] = value;
+	}
+	self.remove = remove;
+	
+	function modify(key, oldvalue, newvalue) {
+		modified[key] = {"old": oldvalue, "new": newvalue};
+	}
+	self.modify = modify;
+	
+	function getDiff() {
+		return {"added": added, "removed": removed, "modified": modified};
+	}
+	self.getDiff = getDiff;
+}
+
+function Tagtransform(transforms, recorder) {
 	let self = new Object();
 	let transformers = ["keyRename", "implicitTagging"]
+	let recorderEnabled = false;
 	
 	if (typeof(transforms) == "object" && Object.keys(transforms).length == 0) {
 		console.error("Argument needs to be a dictionary (Key-Value-Map) filled with key-value pairs.");
 		return "ARG_NOT_DICTIONARY";
+	}
+	
+	if (typeof(recorder) == "object" && recorder.type == "recorder") {
+		recorderEnabled = true;
 	}
 	
 	function validateJsonInput(jsonInput) {
@@ -49,6 +82,10 @@
 			function (key, value, jsonInput, jsonOutput) {
 				jsonOutput[value] = jsonInput[key];
 				delete jsonOutput[key];
+				if (recorderEnabled) {
+					recorder.added(key, jsonInput[key]);
+					recorder.removed(key, jsonInput[key]);
+				}
 				return jsonOutput
 			}
 		);
@@ -63,8 +100,10 @@
 				
 				for (let i in dict) {
 					jsonOutput[i] = dict[i];
+					if (recorderEnabled) {
+						recorder.added(i, dict[i]);
+					}
 				}
-				
 				return jsonOutput;
 			}
 		);
@@ -88,6 +127,7 @@
 }
 
 function tagtransformLoadReferences(transforms) {
+	let self = new Object();
 	let system = TagtransformSystemInternals();
 	
 	async function sendFetch(url, callback, callbargs=[]) {
@@ -117,6 +157,10 @@ function tagtransformLoadReferences(transforms) {
 			sendFetch(transforms, callb, callbargs);
 		}
 	}
+	self.load = load;
+	
+	return self;
+	
 }
 
 function TagtransformSystemInternals() {
@@ -132,4 +176,7 @@ function TagtransformSystemInternals() {
 		}
 		return "object"
 	}
+	self.getObjectType = getObjectType;
+	
+	return self;
 }

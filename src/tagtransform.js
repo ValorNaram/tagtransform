@@ -1,12 +1,45 @@
-function Tagtransform(rules) {
+function TagtransformRecorder() {
+	let self = new Object();
+	let added = {};
+	let removed = {};
+	let modified = {};
 	
+	self.type = "recorder";
+	
+	function add(key, value) {
+		added[key] = value;
+	}
+	self.add = add;
+	
+	function remove(key, value) {
+		removed[key] = value;
+	}
+	self.remove = remove;
+	
+	function modify(key, oldvalue, newvalue) {
+		modified[key] = {"old": oldvalue, "new": newvalue};
+	}
+	self.modify = modify;
+	
+	function getDiff() {
+		return {"added": added, "removed": removed, "modified": modified};
+	}
+	self.getDiff = getDiff;
+}
+
+function Tagtransform(transforms, recorder) {
 	let self = new Object();
 	self.name = "tagtransform";
 	sections = ["keyRename", "implicitTagging"];
+	let recorderEnabled = false;
 	
 	if (typeof(rules) == "object" && Object.keys(rules).length == 0) {
 		console.error("Argument needs to be a dictionary (Key-Value-Map) filled with key-value pairs.");
 		return "ARG_NOT_DICTIONARY";
+	}
+	
+	if (typeof(recorder) == "object" && recorder.type == "recorder") {
+		recorderEnabled = true;
 	}
 	
 	function validateJsonInput(jsonInput) {
@@ -27,16 +60,16 @@ function Tagtransform(rules) {
 		}
 		
 		let jsonOutput = deepCopyJson(jsonInput)
-		let section = sections[transformerName];
+		let transformer = sections[transformerName];
 		
 		if (section == undefined) {
-			console.error("transformer '" + transformerName + "' needs to be available for this.")
+			console.error("transformer '" + transformer + "' needs to be available for this.")
 			return false;
 		}
 		
 		for (let key in jsonInput) {
-			if (rules[section][key] != undefined) {
-				callback(key, rules[key], jsonInput, jsonOutput);
+			if (rules[transformer][key] != undefined) {
+				callback(key, rules[transformer][key], jsonInput, jsonOutput);
 			}
 		}
 		
@@ -50,6 +83,10 @@ function Tagtransform(rules) {
 			function (oldKey, newKey, jsonInput, jsonOutput) {
 				jsonOutput[newKey] = jsonInput[oldKey];
 				delete jsonOutput[oldKey];
+				if (recorderEnabled) {
+					recorder.added(newKey, jsonInput[newKey]);
+					recorder.removed(oldKey, jsonInput[oldKey]);
+				}
 				return jsonOutput
 			}
 		);
@@ -62,6 +99,10 @@ function Tagtransform(rules) {
 			function (key, implicit, jsonInput, jsonOutput) {
 				for (let i in implicit) {
 					jsonOutput[i] = implicit[i];
+
+					if (recorderEnabled) {
+						recorder.added(i, implicit[i]);
+					}
 				}
 				return jsonOutput;
 			}
@@ -86,6 +127,7 @@ function Tagtransform(rules) {
 }
 
 function tagtransformLoadReferences(rules) {
+	let self = new Object();
 	let system = TagtransformSystemInternals();
 	
 	async function sendFetch(url, callback, callbargs=[]) {
@@ -115,6 +157,10 @@ function tagtransformLoadReferences(rules) {
 			sendFetch(rules, callb, callbargs);
 		}
 	}
+	self.load = load;
+	
+	return self;
+	
 }
 
 function TagtransformSystemInternals() {
@@ -130,4 +176,7 @@ function TagtransformSystemInternals() {
 		}
 		return "object"
 	}
+	self.getObjectType = getObjectType;
+	
+	return self;
 }

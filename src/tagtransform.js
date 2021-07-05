@@ -1,15 +1,16 @@
- function Tagtransform(transforms) {
+function Tagtransform(rules) {
 	
 	let self = new Object();
-	let transformers = ["keyRename", "implicitTagging"]
+	self.name = "tagtransform";
+	sections = ["keyRename", "implicitTagging"];
 	
-	if (typeof(transforms) == "object" && Object.keys(transforms).length == 0) {
+	if (typeof(rules) == "object" && Object.keys(rules).length == 0) {
 		console.error("Argument needs to be a dictionary (Key-Value-Map) filled with key-value pairs.");
 		return "ARG_NOT_DICTIONARY";
 	}
 	
 	function validateJsonInput(jsonInput) {
-		if (typeof(transforms) == "object" && Object.keys(transforms).length == 0) {
+		if (typeof(jsonInput) == "object" && Object.keys(jsonInput).length == 0) {
 			console.error("Argument needs to be a dictionary (Key-Value-Map)");
 			return false;
 		}
@@ -26,16 +27,16 @@
 		}
 		
 		let jsonOutput = deepCopyJson(jsonInput)
-		let transformer = transformers[transformerName];
+		let section = sections[transformerName];
 		
-		if (transformer == undefined) {
+		if (section == undefined) {
 			console.error("transformer '" + transformerName + "' needs to be available for this.")
 			return false;
 		}
 		
 		for (let key in jsonInput) {
-			if (transformers[key] != undefined) {
-				callback(key, transformers[key], jsonInput, jsonOutput);
+			if (rules[section][key] != undefined) {
+				callback(key, rules[key], jsonInput, jsonOutput);
 			}
 		}
 		
@@ -46,9 +47,9 @@
 	function simpleKeyRename(jsonInput) {
 		return simple("keyRename",
 			jsonInput,
-			function (key, value, jsonInput, jsonOutput) {
-				jsonOutput[value] = jsonInput[key];
-				delete jsonOutput[key];
+			function (oldKey, newKey, jsonInput, jsonOutput) {
+				jsonOutput[newKey] = jsonInput[oldKey];
+				delete jsonOutput[oldKey];
 				return jsonOutput
 			}
 		);
@@ -58,13 +59,10 @@
 	function simpleImplicitTagging(jsonInput) {
 		return simple("implicitTagging",
 			jsonInput,
-			function (key, value, jsonInput, jsonOutput) {
-				let dict = transformers[key]
-				
-				for (let i in dict) {
-					jsonOutput[i] = dict[i];
+			function (key, implicit, jsonInput, jsonOutput) {
+				for (let i in implicit) {
+					jsonOutput[i] = implicit[i];
 				}
-				
 				return jsonOutput;
 			}
 		);
@@ -87,7 +85,7 @@
 	return self;
 }
 
-function tagtransformLoadReferences(transforms) {
+function tagtransformLoadReferences(rules) {
 	let system = TagtransformSystemInternals();
 	
 	async function sendFetch(url, callback, callbargs=[]) {
@@ -107,14 +105,14 @@ function tagtransformLoadReferences(transforms) {
 	}
 	
 	function load(callb, callbargs) {
-		if (system.getObjectType(transforms) == "object") {
-			return Tagtransform(transforms);
+		if (system.getObjectType(rules) == "object") {
+			return Tagtransform(rules);
 		}
 		
 		if (callbargs == undefined) {
-			sendFetch(transforms, callb);
+			sendFetch(rules, callb);
 		} else {
-			sendFetch(transforms, callb, callbargs);
+			sendFetch(rules, callb, callbargs);
 		}
 	}
 }

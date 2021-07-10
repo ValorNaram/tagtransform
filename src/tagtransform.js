@@ -4,7 +4,7 @@ function TagtransformRecorder() {
 	let removed = {};
 	let modified = {};
 	
-	self.type = "recorder";
+	self.name = "tagtransform_recorder";
 	
 	function add(key, value) {
 		added[key] = value;
@@ -38,7 +38,7 @@ function Tagtransform(transforms, recorder) {
 		return "ARG_NOT_DICTIONARY";
 	}
 	
-	if (typeof(recorder) == "object" && recorder.type == "recorder") {
+	if (typeof(recorder) == "object" && recorder.name == "tagtransform_recorder") {
 		recorderEnabled = true;
 	}
 	
@@ -60,16 +60,18 @@ function Tagtransform(transforms, recorder) {
 		}
 		
 		let jsonOutput = deepCopyJson(jsonInput)
-		let transformer = sections[transformerName];
+		if (sections.indexOf(transformerName) > -1) {
+			let section = transformerName;
+		}
 		
 		if (section == undefined) {
-			console.error("transformer '" + transformer + "' needs to be available for this.")
+			console.error("transformer '" + section + "' needs to be available for this.")
 			return false;
 		}
 		
 		for (let key in jsonInput) {
-			if (rules[transformer][key] != undefined) {
-				callback(key, rules[transformer][key], jsonInput, jsonOutput);
+			if (rules[section][key] != undefined) {
+				callback(key, rules[section][key], jsonInput, jsonOutput);
 			}
 		}
 		
